@@ -139,20 +139,47 @@ using FloorBlocks = std::array<std::map<uint32_t, MinimapBlock>, MAP_LAYERS>;
 	FloorBlocks blocks;
 	const uint64_t total = map.size();
 	uint64_t completed = 0;
-
-	for (TileLocation& location : map.tiles()) {
-		++completed;
-		if (progress && completed % 8192 == 0) {
-			progress(completed, total);
-		}
-		if (!containsFloor(floors, location.getZ()) || !isTileExportable(location.get())) {
-			continue;
-		}
-
-		const Position position = location.getPosition();
-		MinimapBlock& block = blocks[static_cast<size_t>(position.z)][blockIndex(position)];
-		block.updateTile(position.x % kMinimapBlockSize, position.y % kMinimapBlockSize, toOtmmTileRecord(*location.get()));
+	const Bounds bounds = findMapBounds(map);
+	if (!bounds.valid()) {
+		return blocks;
 	}
+
+	map.visitLeaves(bounds.minX, bounds.minY, bounds.maxX + 1, bounds.maxY + 1, [&](const MapNode* node, int nodeMapX, int nodeMapY) {
+		for (int localNodeX = 0; localNodeX < 4; ++localNodeX) {
+			const int mapX = nodeMapX + localNodeX;
+			if (mapX < bounds.minX || mapX > bounds.maxX) {
+				continue;
+			}
+
+			for (int localNodeY = 0; localNodeY < 4; ++localNodeY) {
+				const int mapY = nodeMapY + localNodeY;
+				if (mapY < bounds.minY || mapY > bounds.maxY) {
+					continue;
+				}
+
+				for (const int floor : floors) {
+					const Floor* nodeFloor = node->getFloor(static_cast<uint32_t>(floor));
+					if (!nodeFloor) {
+						continue;
+					}
+
+					const Tile* tile = nodeFloor->locs[static_cast<size_t>(localNodeX * 4 + localNodeY)].get();
+					if (!isTileExportable(tile)) {
+						continue;
+					}
+
+					++completed;
+					if (progress && completed % 8192 == 0) {
+						progress(completed, total);
+					}
+
+					const Position position(mapX, mapY, floor);
+					MinimapBlock& block = blocks[static_cast<size_t>(floor)][blockIndex(position)];
+					block.updateTile(mapX % kMinimapBlockSize, mapY % kMinimapBlockSize, toOtmmTileRecord(*tile));
+				}
+			}
+		}
+	});
 
 	if (progress) {
 		progress(total, total);

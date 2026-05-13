@@ -12,6 +12,7 @@ class MapWindow;
 class MinimapDrawer;
 class MinimapCanvas;
 class wxButton;
+class wxFileName;
 class wxPanel;
 class wxStaticText;
 class wxToggleButton;

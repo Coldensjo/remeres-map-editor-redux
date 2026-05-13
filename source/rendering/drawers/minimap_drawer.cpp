@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
+#include <wx/settings.h>
 
 namespace {
 
@@ -46,6 +47,16 @@ struct MinimapFloorRenderRange {
 	return {
 		.start_floor = std::min(MAP_MAX_LAYER, current_floor + 2),
 		.current_floor = current_floor,
+	};
+}
+
+[[nodiscard]] glm::vec4 wxColourToVec4(const wxColour& color) {
+	constexpr float channelScale = 1.0f / 255.0f;
+	return {
+		static_cast<float>(color.Red()) * channelScale,
+		static_cast<float>(color.Green()) * channelScale,
+		static_cast<float>(color.Blue()) * channelScale,
+		static_cast<float>(color.Alpha()) * channelScale,
 	};
 }
 
@@ -135,7 +146,7 @@ void MinimapDrawer::DrawMapBoundsBorder(const glm::mat4& projection, const wxSiz
 	const float h = static_cast<float>(editor.map.getHeight() * scale_y);
 
 	primitive_renderer->setProjectionMatrix(projection);
-	const glm::vec4 color(0.55f, 0.55f, 0.55f, 1.0f);
+	const glm::vec4 color = wxColourToVec4(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
 	primitive_renderer->drawLine(glm::vec2(x, y), glm::vec2(x + w, y), color);
 	primitive_renderer->drawLine(glm::vec2(x, y + h), glm::vec2(x + w, y + h), color);
 	primitive_renderer->drawLine(glm::vec2(x, y), glm::vec2(x, y + h), color);

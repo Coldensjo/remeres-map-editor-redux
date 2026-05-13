@@ -129,7 +129,7 @@ ExportMinimapWindow::ExportMinimapWindow(wxWindow* parent, Editor& editor) :
 ExportMinimapWindow::~ExportMinimapWindow() = default;
 
 void ExportMinimapWindow::OnClickBrowse(wxCommandEvent& WXUNUSED(event)) {
-	wxDirDialog dialog(nullptr, "Select the output folder", directory_text_field_->GetValue(), wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+	wxDirDialog dialog(this, "Select the output folder", directory_text_field_->GetValue(), wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
 	if (dialog.ShowModal() == wxID_OK) {
 		directory_text_field_->ChangeValue(dialog.GetPath());
 	}

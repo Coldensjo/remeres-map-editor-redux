@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <stdexcept>
 
 namespace minimap_export {
@@ -105,21 +106,44 @@ int maxEncodedImageDimension(MinimapExportFormat format) {
 
 Bounds findContentBounds(Map& map, std::span<const int> floors) {
 	Bounds bounds;
-	for (TileLocation& location : map.tiles()) {
-		if (!containsFloor(floors, location.getZ())) {
-			continue;
-		}
 
-		const Tile* tile = location.get();
-		if (!isTileExportable(tile)) {
-			continue;
-		}
-
-		bounds.minX = std::min(bounds.minX, location.getX());
-		bounds.minY = std::min(bounds.minY, location.getY());
-		bounds.maxX = std::max(bounds.maxX, location.getX());
-		bounds.maxY = std::max(bounds.maxY, location.getY());
+	Bounds mapBounds = findMapBounds(map);
+	if (!mapBounds.valid()) {
+		return bounds;
 	}
+
+	map.visitLeaves(mapBounds.minX, mapBounds.minY, mapBounds.maxX + 1, mapBounds.maxY + 1, [&](const MapNode* node, int nodeMapX, int nodeMapY) {
+		for (int localNodeX = 0; localNodeX < 4; ++localNodeX) {
+			const int mapX = nodeMapX + localNodeX;
+			if (mapX < mapBounds.minX || mapX > mapBounds.maxX) {
+				continue;
+			}
+
+			for (int localNodeY = 0; localNodeY < 4; ++localNodeY) {
+				const int mapY = nodeMapY + localNodeY;
+				if (mapY < mapBounds.minY || mapY > mapBounds.maxY) {
+					continue;
+				}
+
+				for (const int floor : floors) {
+					const Floor* nodeFloor = node->getFloor(static_cast<uint32_t>(floor));
+					if (!nodeFloor) {
+						continue;
+					}
+
+					const Tile* tile = nodeFloor->locs[static_cast<size_t>(localNodeX * 4 + localNodeY)].get();
+					if (!isTileExportable(tile)) {
+						continue;
+					}
+
+					bounds.minX = std::min(bounds.minX, mapX);
+					bounds.minY = std::min(bounds.minY, mapY);
+					bounds.maxX = std::max(bounds.maxX, mapX);
+					bounds.maxY = std::max(bounds.maxY, mapY);
+				}
+			}
+		}
+	});
 	return bounds;
 }
 
@@ -224,12 +248,24 @@ wxFileName fullImageFile(const MinimapExportOptions& options, int floor) {
 
 namespace {
 
+[[nodiscard]] bool isSafeFileBaseName(const std::string& fileBaseName) {
+	if (fileBaseName.contains("..") || fileBaseName.contains('/') || fileBaseName.contains('\\')) {
+		return false;
+	}
+
+	const std::filesystem::path path(fileBaseName);
+	return path.filename().string() == fileBaseName;
+}
+
 [[nodiscard]] MinimapExportResult validateOptions(Editor& editor, const MinimapExportOptions& options) {
 	constexpr uint64_t maxFullImageBytes = 1536ULL * 1024ULL * 1024ULL;
 	constexpr uint64_t rgbPixelBytes = 3;
 
 	if (options.fileBaseName.empty()) {
 		return { .ok = false, .error = "File name is required." };
+	}
+	if (!isSafeFileBaseName(options.fileBaseName)) {
+		return { .ok = false, .error = "File name must not contain path separators or parent directory references." };
 	}
 	if (options.imageSize <= 0) {
 		return { .ok = false, .error = "Image size must be greater than zero." };
