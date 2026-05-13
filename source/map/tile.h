@@ -21,11 +21,7 @@
 #include "map/position.h"
 #include "game/item.h"
 #include "io/otbm/invalid_otbm_content.h"
-
-namespace TileOperations {
-	void update(class Tile* tile);
-	void markSelectionChanged(class Tile* tile);
-}
+#include "map/tile_operations.h"
 
 class TileLocation;
 class GroundBrush;

@@ -325,7 +325,7 @@ namespace TileOperations {
 			i->deselect();
 		}
 
-		TileOperations::update(tile);
+		TileOperations::updateSelectionState(tile);
 	}
 
 	std::vector<std::unique_ptr<Item>> popSelectedItems(Tile* tile, bool ignoreTileSelected) {
@@ -424,6 +424,32 @@ namespace TileOperations {
 		std::erase(*house_exits, h->getID());
 	}
 
+	void updateSelectionState(Tile* tile) {
+		const bool wasSelected = tile->isSelected();
+		tile->statflags &= ~TILESTATE_SELECTED;
+
+		if (tile->spawn && tile->spawn->isSelected()) {
+			tile->statflags |= TILESTATE_SELECTED;
+		}
+		if (tile->creature && tile->creature->isSelected()) {
+			tile->statflags |= TILESTATE_SELECTED;
+		}
+
+		if (tile->ground && tile->ground->isSelected()) {
+			tile->statflags |= TILESTATE_SELECTED;
+		}
+
+		std::ranges::for_each(tile->items, [&](const auto& i) {
+			if (i->isSelected()) {
+				tile->statflags |= TILESTATE_SELECTED;
+			}
+		});
+
+		if (wasSelected || tile->isSelected()) {
+			markSelectionChanged(tile);
+		}
+	}
+
 	void update(Tile* tile) {
 		const bool wasSelected = tile->isSelected();
 		tile->statflags &= TILESTATE_MODIFIED;
@@ -435,7 +461,7 @@ namespace TileOperations {
 			tile->statflags |= TILESTATE_SELECTED;
 		}
 
-		tile->minimapColor = 0; // Reset to "no color" (valid)
+		tile->minimapColor = 0;
 
 		if (tile->ground) {
 			if (tile->ground->isSelected()) {
