@@ -210,21 +210,23 @@ bool VersionManager::LoadDataFiles(wxString& error, std::vector<std::string>& wa
 		warnings.push_back(std::format("Couldn't load creatures.xml: {}", error.ToStdString()));
 	}
 
-	// g_loading.SetLoadDone(45, "Loading user creatures.xml ...");
-	// {
-	// 	FileName cdb = getLoadedVersion()->getLocalDataPath();
-	// 	cdb.SetFullName("creatures.xml");
-	// 	wxString nerr;
-	// 	wxArrayString nwarn;
-	// 	if (!g_creatures.loadFromXML(cdb, false, nerr, nwarn)) {
-	// 		warnings.push_back("Couldn't load user creatures.xml: " + nerr);
-	// 		spdlog::error("Couldn't load user creatures.xml: {}", nerr.ToStdString());
-	// 	}
-	// 	for (const auto& warn : nwarn) {
-	// 		warnings.push_back(warn);
-	// 		spdlog::warn("User creature XML warning: {}", warn.ToStdString());
-	// 	}
-	// }
+	g_loading.SetLoadDone(45, "Loading user creatures.xml ...");
+	{
+		FileName cdb = getLoadedVersion()->getLocalDataPath();
+		cdb.SetFullName("creatures.xml");
+		if (cdb.FileExists()) {
+			wxString nerr;
+			std::vector<std::string> nwarn;
+			if (!g_creatures.loadFromXML(cdb, false, nerr, nwarn)) {
+				warnings.push_back("Couldn't load user creatures.xml: " + nerr.ToStdString());
+				spdlog::error("Couldn't load user creatures.xml: {}", nerr.ToStdString());
+			}
+			for (const auto& warn : nwarn) {
+				warnings.push_back(warn);
+				spdlog::warn("User creature XML warning: {}", warn);
+			}
+		}
+	}
 
 	g_loading.SetLoadDone(50, "Loading materials.xml ...");
 	if (!g_materials.loadMaterials(base_data_path + "materials.xml", error, warnings)) {
@@ -259,9 +261,9 @@ void VersionManager::UnloadVersion() {
 		g_item_definitions.clear();
 		g_gui.gfx.clear();
 
-		// FileName cdb = getLoadedVersion()->getLocalDataPath();
-		// cdb.SetFullName("creatures.xml");
-		// g_creatures.saveToXML(cdb); // Disabled to prevent dual source of truth
+		FileName cdb = getLoadedVersion()->getLocalDataPath();
+		cdb.SetFullName("creatures.xml");
+		g_creatures.saveToXML(cdb);
 		g_creatures.clear();
 
 		loaded_version = CLIENT_VERSION_NONE;
